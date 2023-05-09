@@ -1,34 +1,125 @@
 version: '2.15.1'
 
 volumes:
-  nextcloud:
-  db:
+  nextcloud_prod:
+  nextcloud_test:
+  db_prod:
+  db_test:
 
 services:
-  db:
+  db_prod:
+    container_name: db_prod
     image: mariadb
     restart: always
     volumes:
-      - db:/var/lib/mysql
+      - db_prod:/var/lib/mysql
+    ports:
+      - 3306:3306
+    networks:
+      - env_prod
     environment:
       - MYSQL_ROOT_PASSWORD=admin
       - MYSQL_PASSWORD=admin
       - MYSQL_DATABASE=nextcloud
       - MYSQL_USER=admin
+    deploy:
+      resources: 
+        limits:
+          cpus: "0.15" 
+          memory: "300M"
+        reservations:
+          cpus: "0.1"
+          memory: "150MB"
+  db_test:
+    container_name: db_test
+    image: mariadb
+    restart: always
+    volumes:
+      - db_test:/var/lib/mysql
+    ports:
+      - 3307:3307  
+    networks:
+      - env_test          
+    environment:
+      - MYSQL_ROOT_PASSWORD=admin
+      - MYSQL_PASSWORD=admin
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=admin
+    deploy:
+      resources: 
+        limits:
+          cpus: "0.15" 
+          memory: "300M"
+        reservations:
+          cpus: "0.1"
+          memory: "150MB"          
 
-  app:
+  app_prod:
+    container_name: app_prod
     image: nextcloud
     restart: always
     ports:
       - 8080:80
     links:
-      - db
+      - db_prod
     volumes:
-      - nextcloud:/var/www/html
+      - nextcloud_prod:/var/www/html
+    networks:
+      - env_prod      
     environment:
       - MYSQL_PASSWORD=admin
       - MYSQL_DATABASE=nextcloud
       - MYSQL_USER=admin
-      - MYSQL_HOST=db
+      - MYSQL_HOST=db_prod
     depends_on:
-      - db
+      - db_prod
+    deploy:
+      resources: 
+        limits:
+          cpus: "0.15" 
+          memory: "300M"   
+  app_test:
+    container_name: app_test
+    image: nextcloud
+    restart: always
+    ports:
+      - 8081:80
+    links:
+      - db_test
+    volumes:
+      - nextcloud_test:/var/www/html
+    networks:
+      - env_test      
+    environment:
+      - MYSQL_PASSWORD=admin
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=admin
+      - MYSQL_HOST=db_test
+    depends_on:
+      - db_test
+    deploy:
+      resources: 
+        limits:
+          cpus: "0.15" 
+          memory: "300M"   
+
+networks:
+  env_prod:
+    driver: bridge
+    ##IPV6
+    ipam:
+      driver: default
+      config:
+        - 
+          subnet: "172.16.232.0/24"
+          gateway: "172.16.232.1"
+  env_test:
+    driver: bridge
+    ##IPV6
+    ipam:
+      driver: default
+      config:
+        - 
+          subnet: "172.16.235.0/24"
+          gateway: "172.16.235.1"        
+
